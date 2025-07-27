@@ -305,14 +305,20 @@ def onAppStart(app):
     app.game2On = False
     app.game2speechStart = True  #
     app.game2speechDone = False
+    app.game2success = False
+    app.gameOver2 = False
     app.game2speechcount = 0
     app.game2speeches = [ 
         'The maze ahead was built by ancient mages...',
         'Only those with a sharp mind and brave heart can find the exit.',
         'Beware of the paths that lead nowhere...',
-        'Use WASD or arrow keys to move.',
+        'Use WASD or ARROW KEYS to move.',
         'Press any key to begin your journey.'
     ]
+    app.mazecompletion = 1500
+    app.waitingAfterGame2 = False
+    
+    app.mazecompletioncolors = ['green', 'yellow', 'red']
 
 
     app.game3 = False
@@ -324,5 +330,40 @@ def onAppStart(app):
 
     app.waitingAfterGame1 = False
 
+def redrawAll(app):
+    if app.starting:
+        drawStarting(app)
 
-                
+    elif app.mainpage:
+        drawMainPage(app)
+        if app.showWelcomeOverlay:
+            drawWelcomePage(app)
+        elif app.mainpage:
+            drawMainPage(app)
+            if app.showWelcomeOverlay:
+                drawWelcomePage(app)
+            if app.fadingOut1:
+                drawRect(0, 0, app.width, app.height, fill='black', opacity=app.fadeOpacity1)
+            if app.fadingOut2:
+                drawRect(0, 0, app.width, app.height, fill='black', opacity=app.fadeOpacity2)
+
+
+    elif app.game1:
+        drawgame1(app)
+        if app.player.gameOver1:
+            drawRect(0, 0, app.width, app.height, fill = 'red', opacity = 40)
+            drawLabel('[Press any KEY to go back to the mainpage]', app.width / 2, app.height / 2, size = 30, bold = True, fill = 'white', font = 'monospace')
+        if app.game1success:
+            drawRect(0, 0, app.width, app.height, fill = 'gold', opacity = 40)
+            drawLabel('SUCCESS', app.width / 2, app.height / 2 - 300, size = 80, bold = True, fill = 'white', font = 'monospace')
+            drawKey(app)
+    
+    elif app.game2:
+        drawgame2(app)
+        if app.player2.gameOver2:
+            drawRect(0, 0, app.width, app.height, fill = 'red', opacity = 40)
+            drawLabel('[Press any KEY to go back to the mainpage]', app.width / 2, app.height / 2, size = 30, bold = True, fill = 'white', font = 'monospace')
+        if app.game2success:
+            drawRect(0, 0, app.width, app.height, fill = 'gold', opacity = 40)
+            drawLabel('SUCCESS', app.width / 2, app.height / 2 - 300, size = 80, bold = True, fill = 'white', font = 'monospace')
+            drawKey(app)
