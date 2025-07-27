@@ -1,5 +1,71 @@
 from cmu_graphics import *
 import random
+class MazeCell(): #Got this logic from ChatGPT
+    def __init__(self):
+        self.visited = False
+        self.walls = {'top': True, 
+                      'right': True, 
+                      'bottom': True, 
+                      'left': True}
+        
+class Player2():
+    def __init__(self, app):
+        self.cellSize = 40
+        self.rows = 20
+        self.cols = 20
+        self.maze = [[MazeCell() for i in range(self.cols)] for j in range(self.rows)] 
+        self.gameOver2 = False
+
+
+    def drawGrid(self):
+        for row in range(self.rows):
+            for col in range(self.cols):
+                x = col * self.cellSize
+                y = row * self.cellSize
+                cell = self.maze[row][col]
+                
+                if cell.walls['top']:
+                    drawImage('middleground.png', x, y, width=self.cellSize, height=4)
+                if cell.walls['right']:
+                    drawImage('middleground.png', x + self.cellSize - 4, y, width=4, height=self.cellSize)
+                if cell.walls['bottom']:
+                    drawImage('middleground.png', x, y + self.cellSize - 4, width=self.cellSize, height=4)
+                if cell.walls['left']:
+                    drawImage('middleground.png', x, y, width=4, height=self.cellSize)
+
+
+    
+    def generateMaze(self, row, col):
+        cell = self.maze[row][col]
+        cell.visited = True
+
+        directions = ['top', 'right', 'bottom', 'left']
+        random.shuffle(directions) #Got random.shuffle from w3 schools
+
+        for direction in directions:
+            dr, dc = 0, 0
+            if direction == 'top':
+                dr = -1
+            elif direction == 'bottom':
+                dr = 1
+            elif direction == 'left':
+                dc = -1
+            elif direction == 'right':
+                dc = 1
+
+            newRow = row + dr
+            newCol = col + dc
+
+            if 0 <= newRow < self.rows and 0 <= newCol < self.cols:
+                next = self.maze[newRow][newCol]
+                if not next.visited:
+                    cell.walls[direction] = False
+                    opposite = {'top': 'bottom', 'bottom': 'top', 'left': 'right', 'right': 'left'}
+                    next.walls[opposite[direction]] = False
+
+                    self.generateMaze(newRow, newCol)
+
+
 class Player1():
     def __init__(self, x ,y, app):
         self.x = x
@@ -153,8 +219,8 @@ def onAppStart(app):
     app.backgroundy = app.height / 2
     app.speed = 10
     
-    app.urlbackgroundmain = 'tiles.png'
-    app.urlwood = 'planks.png'
+    app.urlbackgroundmain = 'tiles.png' #I got every image from opengameart.org. 
+    app.urlwood = 'planks.png' #I found them around a week ago so I don't have the specific links for each of them
     app.urlwoodtw = 'plankstw.png'
     app.bush = 'bush.png'
     app.cobble = 'cobble.png'
@@ -223,17 +289,40 @@ def onAppStart(app):
     app.game1counter = 0
     app.game1success = False
     app.keycounter = 0
+    app.fadeOpacity1 = 0
+    app.fadingOut1 = False
 
     app.game2 = False
     app.game2pass = False
+    app.player2 = Player2(app)
+    app.player2.generateMaze(0, 0)
+    app.playerRow = 0
+    app.playerCol = 0
+    app.fadeOpacity2 = 0
+    app.fadingOut2 = False
+    app.game2characterchoices = ['frontdown.png','backdown.png','rightdown.png', 'leftdown.png']
+    app.game2character = 'frontdown.png'
+    app.game2On = False
+    app.game2speechStart = True  #
+    app.game2speechDone = False
+    app.game2speechcount = 0
+    app.game2speeches = [ 
+        'The maze ahead was built by ancient mages...',
+        'Only those with a sharp mind and brave heart can find the exit.',
+        'Beware of the paths that lead nowhere...',
+        'Use WASD or arrow keys to move.',
+        'Press any key to begin your journey.'
+    ]
+
+
     app.game3 = False
     app.game3pass = False
     app.game4 = False
     app.gameOver = False
 
-    app.fadeOpacity = 0
-    app.fadingOut = False
+
 
     app.waitingAfterGame1 = False
+
 
                 
