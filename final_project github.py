@@ -282,7 +282,7 @@ def onAppStart(app):
     app.showWelcomeOverlay = False
 
     app.game1 = False
-    app.game1pass = False
+    app.game1pass = True
     app.player = Player1(app.width / 2, 540, app)
     app.game1On = False
     app.gameOver1 = False
@@ -293,7 +293,7 @@ def onAppStart(app):
     app.fadingOut1 = False
 
     app.game2 = False
-    app.game2pass = False
+    app.game2pass = True
     app.player2 = Player2(app)
     app.player2.generateMaze(0, 0)
     app.playerRow = 0
@@ -340,6 +340,13 @@ def redrawAll(app):
             drawWelcomePage(app)
         elif app.mainpage:
             drawMainPage(app)
+            drawImage('statusframe.png',20,20, width = 300, height = 50)
+            if app.game1pass:
+                drawImage(app.key, 50, 28, width = 40, height = 30)
+            if app.game2pass:
+                drawImage(app.key, 150, 28, width = 40, height = 30)
+            if app.game3pass:
+                drawImage(app.key, 250, 28, width = 40, height = 30)
             if app.showWelcomeOverlay:
                 drawWelcomePage(app)
             if app.fadingOut1:
@@ -367,3 +374,25 @@ def redrawAll(app):
             drawRect(0, 0, app.width, app.height, fill = 'gold', opacity = 40)
             drawLabel('SUCCESS', app.width / 2, app.height / 2 - 300, size = 80, bold = True, fill = 'white', font = 'monospace')
             drawKey(app)
+
+
+            
+
+def drawWelcomePage(app):
+    drawRect(0, 0, app.width, app.height, fill='black', opacity=70)
+    drawLabel("WELCOME TO THE KING'S QUEST", app.width / 2, app.height / 2 - 50, 
+                fill='white', size=40, font='monospace', bold=True)
+    
+    drawLabel("Each portal will send you to different worlds.", app.width / 2, app.height / 2 - 10, 
+                fill='white', size=20, font='monospace', bold=True)
+
+    drawLabel('Enter the first portal to start your journey.', app.width / 2, app.height / 2 + 10, 
+                fill='white', size=20, font='monospace', bold=True)
+
+    drawLabel('*** To move, use the WASD or the Arrow keys ***', app.width / 2, app.height / 2 + 120, 
+                fill='white', size=20, font='monospace')  
+
+    drawLabel('Press any KEY to START', app.width / 2, app.height / 2 + 70, 
+                fill='white', size=40, font='monospace')
+
+    drawImage(app.castle, app.width / 2, app.height / 2 - 200, width=200, height=200, align='center')
