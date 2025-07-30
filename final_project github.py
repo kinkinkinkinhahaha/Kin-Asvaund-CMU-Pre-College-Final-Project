@@ -1,5 +1,88 @@
 from cmu_graphics import *
 import random
+
+class BridgeCell():
+    def __init__(self):
+        self.correct = False
+        
+class Player3():
+    def __init__(self, app):
+        self.x = app.width / 2
+        self.y = app.height - 50
+        self.bridge = [[BridgeCell() for i in range(2)] for j in range(10)]
+        self.cellwidth = 80
+        self.cellheight = 55
+        self.showIndex = 0          
+        self.showTimer = 0  
+        self.roundNumber = 1
+        self.currentRow = 0
+        self.currentCol = 0
+        self.playerX = None
+        self.playerY = None
+    
+    def drawMap(self, app):
+        drawImage(app.rockbackground, 0, 0, 
+                  width = app.width, height = app.height)
+        drawRect(0, 0, app.width, app.height, 
+                 fill = 'black', opacity = 50)
+        drawImage(app.middleground, app.width / 2, 
+                  app.height - 100, width = 600, height = 600, align = 'top')
+        drawImage(app.middleground, app.width / 2, 100, 
+                  width = 600, height = 600, align = 'bottom')
+        drawImage(app.wall, app.width / 2, app.height / 2, 
+                  width = 600, height = 20, align = 'center', rotateAngle = 90)
+        drawImage(app.wall, app.width / 2 - 100, app.height / 2, 
+                  width = 600, height = 20, align = 'center', rotateAngle = 90)
+        drawImage(app.wall, app.width / 2 + 100, app.height / 2, 
+                  width = 600, height = 20, align = 'center', rotateAngle = 90)
+    
+    def startShow(self):
+        self.showIndex = 0
+        self.showTimer = 0
+
+    def updateReveal(self, time):       
+        self.revealTimer += time
+        if self.revealTimer >= 300:   
+            self.revealIndex += 1
+            self.revealTimer = 0
+
+    def drawBridge(self, app):
+        gap = 20  
+        rowgap = 5  
+        leftx = app.width / 2 - (self.cellwidth / 2 + gap / 2)
+        rightx = app.width / 2 + (self.cellwidth / 2 + gap / 2)
+        starty = app.height - 125 
+
+        glowingrow = min(self.roundNumber * 2, len(self.bridge))
+
+        for j in range(len(self.bridge)):        
+            for i in range(len(self.bridge[0])): 
+                x = leftx if i == 0 else rightx
+
+                y = starty - j * (self.cellheight + rowgap)
+
+                drawImage(app.bridge, x, y,
+                        width=self.cellwidth, height=self.cellheight,
+                        align='center')
+                
+                if self.bridge[j][i].correct and j < self.revealIndex and j < glowingrow:
+                    drawRect(x, y, self.cellwidth, self.cellheight,
+                            fill='white', opacity=50, align='center')
+    
+    def randomizeCorrect(self, app):
+        for j in range(len(self.bridge)):
+            for i in range(len(self.bridge[0])):
+                self.bridge[j][i].correct = False
+            safe = random.choice([0, 1])
+            self.bridge[j][safe].correct = True
+    
+    def completeRound(self):
+        if self.roundNumber < 5:      
+            self.roundNumber += 1
+            self.startshow()       
+        else:
+            app.game3Over = True
+
 class MazeCell(): #Got this logic from ChatGPT
     def __init__(self):
         self.visited = False
@@ -131,6 +214,7 @@ class Player1():
                     'width': 300,
                     'height': 800
                 })
+
             newPlatforms = []
             for platform in self.platformgroup:
                 platform['x'] -= 20
@@ -172,15 +256,7 @@ class Player1():
             playerLeft = self.x - 37
             playerRight = self.x + 37
 
-            
-            if (self.vy < 0 and
-                playerTop <= platformBottom and playerBottom > platformBottom and 
-                playerRight > platformLeft and playerLeft < platformRight):
-                self.y = platformBottom + 60
-                self.vy = 0
-
-
-            elif (self.vy >= 0 and
+            if (self.vy >= 0 and
                 playerBottom >= platformTop and 
                 playerBottom <= platformTop + abs(self.vy) + 1 and
                 playerRight > platformLeft and playerLeft < platformRight):
@@ -230,11 +306,13 @@ def onAppStart(app):
     app.redportal = 'redportal.png'
     app.blueportal = 'blueportal.png'
     app.yellowportal = 'yellowportal.png'
+    app.metalportal = 'metalportal.png'
     app.castle = 'castle.png'
     app.vignette = 'vignette.png'
     app.startingbackground = 'startingbackground.png'
     app.key = 'keyIcons.png'
     app.opacity = 0
+    app.rockbackground = 'rock_background.png'
 
     app.rotatedirections = ['left', 'bottom', 'right', 'top']
     
@@ -323,6 +401,26 @@ def onAppStart(app):
 
     app.game3 = False
     app.game3pass = False
+    app.bridge = 'bridgeplatform.png'
+    app.game3On = False
+    app.game3success = False
+ 
+    app.player3 = Player3(app)
+    app.fadeOpacity3 = 0
+    app.fadingOut3 = False
+
+    app.game3character = 'backdown.png'
+    app.game3speechStart = True  
+    app.game3speechDone = False
+    app.game3speechcount = 0
+    app.game3speeches = [ 
+        'No one has ever made it this far...',
+        'This last test will reveal your true brain power',
+        'Use the left and right arrow keys or A and D keys to play',
+        'Press any key to begin your final quest.'
+    ]
+
+
     app.game4 = False
     app.gameOver = False
 
@@ -396,3 +494,414 @@ def drawWelcomePage(app):
                 fill='white', size=40, font='monospace')
 
     drawImage(app.castle, app.width / 2, app.height / 2 - 200, width=200, height=200, align='center')
+
+def drawMainPage(app):
+    drawImage(app.urlbackgroundmain, app.backgroundx, app.backgroundy, width=1600, 
+                height=1600, align='center')
+    
+    for i in range(4):
+        drawImage(app.urlwood, app.backgroundx, app.backgroundy, width=800, 
+                    height=180, align=app.rotatedirections[i], rotateAngle=90 * i)
+        drawImage(app.cobble, app.backgroundx, app.backgroundy, width=800, 
+                    height=100, align=app.rotatedirections[i], rotateAngle=90 * i)
+
+    drawImage(app.wall, app.backgroundx, app.backgroundy + 90, width=800, height=20, align='left')
+    drawImage(app.wall, app.backgroundx, app.backgroundy + 90, width=800, height=20, align='right')
+    drawImage(app.wall, app.backgroundx, app.backgroundy - 90, width=800, height=20, align='left')
+    drawImage(app.wall, app.backgroundx, app.backgroundy - 90, width=800, height=20, align='right')
+    drawImage(app.wall, app.backgroundx + 90, app.backgroundy, width=800, height=20, align='top', rotateAngle=90)
+    drawImage(app.wall, app.backgroundx + 90, app.backgroundy, width=800, height=20, align='bottom', rotateAngle=90)
+    drawImage(app.wall, app.backgroundx - 90, app.backgroundy, width=800, height=20, align='top', rotateAngle=90)
+    drawImage(app.wall, app.backgroundx - 90, app.backgroundy, width=800, height=20, align='bottom', rotateAngle=90)
+
+    drawImage(app.middleground, app.backgroundx, app.backgroundy + 5, width=180, height=180, align='center')
+    drawImage(app.middleground, app.backgroundx + 300, app.backgroundy, width=500, height=300, align='left')
+    
+    drawImage(app.middleground, app.backgroundx - 300, app.backgroundy, width=500, height=300, align='right')
+    drawImage(app.middleground, app.backgroundx, app.backgroundy - 300, width=500, height=800, align='bottom')
+    drawImage(app.middleground, app.backgroundx, app.backgroundy + 300, width=500, height=800, align='top')
+
+    drawImage(app.greenportal, app.backgroundx + 300, app.backgroundy, width=50, height=250, align='center')
+
+    if app.game1pass:
+        drawImage(app.blueportal, app.backgroundx - 300, app.backgroundy, width=50, height=250, align='center', rotateAngle=180)
+    
+    if app.game2pass:
+        drawImage(app.yellowportal, app.backgroundx, app.backgroundy - 300, width=80, height=300, align='center', rotateAngle=-90)
+    
+    if app.game3pass:
+        drawImage(app.redportal, app.backgroundx, app.backgroundy + 300, width=80, height=300, align='center', rotateAngle=90)
+
+    drawImage(app.characterdirection[app.charactercount % 2], app.characterx, 
+            app.charactery, width=75, height=125, align='bottom')
+    drawImage(app.vignette, app.width/2, app.height/2, width=app.width, height=app.height, align='center')
+
+def drawStarting(app):
+    
+    color = rgb(68, 30, 10)
+    drawImage(app.startingbackground, 0, 0, width = app.width, height = app.height)
+    drawRect(0, 0, app.width, app.height, fill = color, opacity = 50)
+
+    drawOval(app.width / 2, app.height / 2, 600, 500, fill = 'red' , opacity = 10)
+    drawRect(0, 0, app.width, app.height, fill = 'black', opacity = 60)
+    drawImage(app.wizard[app.wizardcount % 3], app.width / 2 , app.wizardy, width = 150, height = 250, align = 'center')
+    drawImage(app.charactermoveback[app.wizardcount % 2], app.width / 2 , app.height / 2 + 100, width = 75, height = 125, align = 'center')
+
+    if app.speechStart:
+        drawRect(0, 0, app.width, app.height, fill = 'black', opacity = 50)
+        drawRect(app.width / 2 , app.height / 2 - 200, app.width, 200, fill = 'black', opacity = 50, align = 'center' )
+        drawLabel(app.speech[app.speechcount], app.width / 2, app.height / 2 - 225, font = 'monospace', size = 18, fill = 'white', bold = True)
+        drawLabel('[click SPACE to continue]', app.width / 2, app.height / 2 - 150, font = 'monospace', size = 20, fill = 'white')
+    
+    if app.speechDone:
+        drawLabel('[click any KEY to continue]', app.width / 2, app.height / 2 + 300, font = 'monospace', size = 40, fill = 'white', bold = True)
+   
+    drawImage(app.vignette, app.width/2, app.height/2, width=app.width, height=app.height, align='center', opacity = 100)
+
+def restartMain(app):
+    app.mainpage = True
+    app.characterx = app.width / 2
+    app.charactery = app.height / 2
+    app.backgroundx = app.width / 2
+    app.backgroundy = app.height / 2
+
+    app.backgroundmovingleft = False
+    app.backgroundmovingright = False
+    app.backgroundmovingup = False
+    app.backgroundmovingdown = False
+    app.opacityfull = False
+
+def drawKey(app):
+    drawImage(app.key, app.width/2, app.height/2 + 100, width = 200, height = 400, opacity = app.keycounter/160 * 100, align = 'center')
+
+def drawCompletion(app):
+    margin = 20
+    barX = app.width - 300 - margin
+    barY = margin
+
+    barWidth = 300
+    barHeight = 50
+
+    progress = min(app.game1counter / 1500, 1)
+    fillWidth = int(barWidth * progress)
+
+    if fillWidth > 0:
+        drawRect(barX, barY, fillWidth, barHeight, fill='green')
+    drawRect(barX, barY, barWidth, barHeight, fill=None, border='black', borderWidth=10)
+
+def drawMazeCompletion(app):
+    margin = 20
+    barX = app.width - 300 - margin
+    barY = margin
+
+    barWidth = 300
+    barHeight = 50
+
+    progress = min(app.mazecompletion / 1500, 1)
+    fillWidth = int(barWidth * progress)
+
+    i = 0
+    if progress <= 0.50:
+        i = 1
+    if progress <= 0.25:
+        i = 2
+
+    if fillWidth > 0:
+        drawRect(barX, barY, fillWidth, barHeight, fill=app.mazecompletioncolors[i], opacity = 50)
+    drawRect(barX, barY, barWidth, barHeight, fill=None, border='black', borderWidth=5, opacity = 75)
+
+def restartGame1(app):
+    app.game1 = False
+    app.player = Player1(app.width / 2, 540, app)
+    app.game1On = False
+    app.gameOver1 = False   
+    app.game1success = False
+    app.game1counter = 0
+    app.keycounter = 0
+
+def restartGame2(app):
+    app.game2 = False
+    app.player2 = Player2(app)
+    app.player2.generateMaze(0, 0) 
+    app.playerRow = 0  
+    app.playerCol = 0  
+    app.game2On = False
+    app.gameOver2 = False
+    app.game2success = False
+    app.mazecompletion = 1500
+    app.keycounter = 0
+    app.game2speechStart = True
+    app.game2speechDone = False
+    app.game2speechcount = 0
+
+
+def drawgame1(app):
+    app.player.drawbackground(app)
+    app.player.drawPlatforms(app)
+    app.player.updatejump(app)
+    app.player.drawplayer(app)
+    drawCompletion(app)
+
+    if not app.game1On:
+        drawRect(0, 0, app.width, app.height, fill='black', opacity=50)
+        drawLabel('Your first key fragment lies', 
+                app.width / 2 , app.height / 2 - 60, 
+                size=20, font='monospace', fill = 'white', bold = True, align = 'left')
+        
+        drawLabel('at the end of this cave', 
+                app.width / 2 , app.height / 2 - 40, 
+                size=20, font='monospace', fill = 'white', bold = True, align = 'left')
+
+        drawLabel('Be careful, the failure of this quest', 
+                app.width / 2, app.height / 2 ,  
+                size=15, font='monospace', fill='white', align = 'left')
+        
+        drawLabel('will send you back to the portals,', 
+                app.width / 2, app.height / 2 + 20,  
+                size=15, font='monospace', fill='white', align = 'left')
+
+        drawLabel('where you will have to', 
+                app.width / 2 , app.height / 2 + 40,  
+                size=15, font='monospace', fill='white', align = 'left')
+
+        drawLabel('start this journey again.', 
+                app.width / 2 , app.height / 2 + 60,  
+                size=15, font='monospace', fill='white', align = 'left')
+        drawImage('wizard1.png', app.width/2 - 300, app.height/2 - 160,  width = 254, height = 304)
+        
+        drawLabel('Press any KEY to start the game', app.width/2, app.height/2 + 200, size = 25, font = 'monospace', fill = 'white', bold = True)
+        drawCompletion(app)
+
+def drawgame2(app):
+    drawImage('rock_background.png', 0, 0, width = app.width, height = app.height)
+    app.player2.drawGrid()
+    x = app.playerCol * app.player2.cellSize + app.player2.cellSize / 2
+    y = app.playerRow * app.player2.cellSize + app.player2.cellSize / 2
+    drawImage(app.game2character, x, y, width = 40, height = 40, align = 'center')
+
+    keyX = (app.player2.cols - 1) * app.player2.cellSize + app.player2.cellSize / 2
+    keyY = (app.player2.rows - 1) * app.player2.cellSize + app.player2.cellSize / 2
+    drawImage(app.key, keyX, keyY, width=30, height=30, align='center')
+
+    drawMazeCompletion(app)
+
+    if app.game2speechStart:
+        drawRect(0, 0, app.width, app.height, fill='black', opacity=50)
+        drawRect(app.width / 2 , app.height / 2 - 200, app.width, 200, fill = 'black', opacity = 50, align = 'center' )
+        drawLabel(app.game2speeches[app.game2speechcount], app.width / 2, app.height / 2 - 225, font = 'monospace', size = 18, fill = 'white', bold = True)
+        drawLabel('[click SPACE to continue]', app.width / 2, app.height / 2 - 150, font = 'monospace', size = 20, fill = 'white')
+        drawImage('wizard1.png', app.width/2 , app.height/2 + 160,  width = 254, height = 304, align = 'center')
+    
+
+def onKeyPress(app, key):
+    if app.starting and app.speechDone:
+        app.starting = False
+        app.mainpage = True
+        app.showWelcomeOverlay = True
+
+    elif app.starting:   
+        if app.speechStart:
+            if key == 'space':
+                app.speechcount += 1
+            if app.speechcount >= 11:
+                app.speechStart = False
+                app.speechDone = True
+
+    elif app.showWelcomeOverlay:
+        app.showWelcomeOverlay = False
+
+    elif app.game1 and not app.player.gameOver1:
+        if app.game1On:
+            if not app.player.start:
+                app.player.start = True
+            elif key == 'space':
+                app.player.jump()
+        else:
+            app.game1On = True
+
+    if app.game2:
+        if app.game2speechStart:
+            if key == 'space':
+                app.game2speechcount += 1
+                if app.game2speechcount >= len(app.game2speeches):
+                    app.game2speechStart = False
+                    app.game2speechDone = True
+        elif app.game2speechDone and not app.game2On:
+            app.game2speechDone = False
+            app.game2On = True
+        elif app.game2On:
+            row = app.playerRow
+            col = app.playerCol
+            cell = app.player2.maze[row][col]
+            if (key == 'up' or key == "w") and not cell.walls['top']:
+                app.playerRow -= 1
+                app.game2character = app.game2characterchoices[1]
+            elif (key == 'down' or key == 's') and not cell.walls['bottom']:
+                app.playerRow += 1
+                app.game2character = app.game2characterchoices[0]
+            elif (key == 'left' or key == 'a') and not cell.walls['left']:
+                app.playerCol -= 1
+                app.game2character = app.game2characterchoices[3]
+            elif (key == 'right' or key == 'd') and not cell.walls['right']:
+                app.playerCol += 1
+                app.game2character = app.game2characterchoices[2]
+
+    if app.player2.gameOver2:
+        app.player2.gameOver2 = False
+        app.game2 = False
+        restartMain(app)
+        restartGame2(app)
+        app.mainpage = True
+
+    if app.playerRow == app.player2.rows - 1 and app.playerCol == app.player2.cols - 1:
+        app.game2success = True
+        app.game2pass = True
+        return
+
+
+    if app.player.gameOver1:
+        app.player.gameOver1 = False
+        app.game1 = False
+        restartMain(app)
+        restartGame1(app)
+        app.mainpage = True
+        
+def onKeyHold(app, keys):
+    if app.fadingOut1 or app.game1 or app.waitingAfterGame1:
+        return
+    
+    app.backgroundmovingleft = False
+    app.backgroundmovingright = False
+    app.backgroundmovingup = False
+    app.backgroundmovingdown = False
+
+    bgWidth = 1600
+    bgHeight = 1600
+
+    if not app.starting and app.mainpage:
+        if ('a' in keys or 'left' in keys) and app.backgroundx < (bgWidth + (app.width - bgWidth)):
+            if not((app.backgroundy < 300 or app.backgroundy > 500) and app.backgroundx > 475):
+                app.backgroundmovingleft = True
+                app.characterdirection = app.charactermoveleft
+
+            if app.backgroundx >= 675 and not app.fadingOut2 and app.game1pass:
+                app.fadingOut2 = True
+                app.fadeOpacity2 = 0 
+
+        elif ('d' in keys or 'right' in keys) and app.backgroundx > (app.width * 2 - bgWidth)/2:
+            if not((app.backgroundy < 300 or app.backgroundy > 500) and app.backgroundx < 315):
+                app.backgroundmovingright = True
+                app.characterdirection = app.charactermoveright
+
+            if app.backgroundx <= 125 and not app.fadingOut1:
+                app.fadingOut1 = True
+                app.fadeOpacity1 = 0 
+        
+        elif ('s' in keys or 'down' in keys) and app.backgroundy > (app.height * 2 - bgHeight)/2:
+            if not((app.backgroundx < 300 or app.backgroundx > 500) and app.backgroundy < 315):
+                app.backgroundmovingdown = True
+                app.characterdirection = app.charactermovefront
+        
+        elif ('w' in keys or 'up' in keys) and app.backgroundy < (bgHeight + (app.height - bgHeight)):
+            if not((app.backgroundx < 300 or app.backgroundx > 500) and app.backgroundy > 460):
+                app.backgroundmovingup = True
+                app.characterdirection = app.charactermoveback
+
+def onKeyRelease(app, key):
+    if not app.starting and app.mainpage:
+        if 'a' in key or 'left' in key:
+            app.backgroundmovingleft = False
+        if 'd' in key or 'right' in key:
+            app.backgroundmovingright = False
+        if 's' in key or 'down' in key:
+            app.backgroundmovingdown = False
+        if 'w' in key or 'up' in key:
+            app.backgroundmovingup = False
+
+def onStep(app):
+    app.count += 1
+
+    if app.mainpage:
+        if app.count % 5 == 0:
+            app.charactercount += 1
+
+        if app.backgroundmovingleft:
+            app.backgroundx += app.speed
+        if app.backgroundmovingright:
+            app.backgroundx -= app.speed
+        if app.backgroundmovingdown:
+            app.backgroundy -= app.speed
+        if app.backgroundmovingup:
+            app.backgroundy += app.speed
+
+    if app.game1 and app.game1On and not app.game1success:
+        app.player.updatePlatforms(app)
+        app.game1counter += 1
+        if app.game1counter >= 1500:
+            app.game1success = True
+            app.game1pass = True
+    
+    if app.game2 and app.game2On:
+        app.mazecompletion -= 5
+        if app.mazecompletion <= 0 and not app.game2success:
+            app.player2.gameOver2 = True
+        
+        
+
+    if app.game1success:
+        app.keycounter += 1
+        app.waitingAfterGame1 = True
+        if app.keycounter >= 160:
+            app.waitingAfterGame1 = False
+            app.game1 = False
+            restartMain(app)
+            restartGame1(app)
+            app.mainpage = True
+            app.game1success = False
+            app.keycounter = 0
+
+    if app.game2success:
+        app.keycounter += 1
+        app.waitingAfterGame2 = True
+        if app.keycounter >= 60:
+            app.waitingAfterGame2 = False
+            app.game2 = False
+            app.game2On = False
+            restartMain(app)
+            restartGame2(app)
+            app.mainpage = True
+            app.game2success = False
+            app.keycounter = 0
+   
+
+    if app.fadingOut1:
+        app.fadeOpacity1 += 20  
+        if app.fadeOpacity1 >= 100:
+            app.fadeOpacity1 = 100
+            app.fadingOut1 = False
+            app.mainpage = False
+            app.game1 = True
+    
+    if app.fadingOut2:
+        app.fadeOpacity2 += 20  
+        if app.fadeOpacity2 >= 100:
+            app.fadeOpacity2 = 100
+            app.fadingOut2 = False
+            app.mainpage = False
+            app.game2 = True
+
+    if app.starting and app.wizardWalkingIn:
+        app.wizardy += app.wizardSpeed
+        if app.wizardy >= app.wizardTargetY:
+            app.wizardy = app.wizardTargetY
+            app.wizardWalkingIn = False
+            app.speechStart = True
+    
+    if app.starting:
+        if app.count % 10 == 0:
+            app.wizardcount += 1
+    
+def main():
+    runApp()
+
+main()
