@@ -4,6 +4,7 @@ import random
 class BridgeCell():
     def __init__(self):
         self.correct = False
+        self.visible = True
         
 class Player3():
     def __init__(self, app):
@@ -15,10 +16,27 @@ class Player3():
         self.showIndex = 0          
         self.showTimer = 0  
         self.roundNumber = 1
-        self.currentRow = 0
-        self.currentCol = 0
-        self.playerX = None
-        self.playerY = None
+
+        self.currentRow = -1   
+        self.currentCol = 0   
+        self.playerX = app.width / 2  
+        self.playerY = app.height - 120  
+        self.showIndex = 0        
+        self.showTimer = 0        
+        self.showDelay = 30   
+        self.revealing = False
+        self.glowOn = False  
+        self.teleportDelay = 0  
+        self.gameOver = False
+        self.falling = False
+
+        self.playerWidth = 50
+        self.playerHeight = 60
+        self.greenScreen = False
+
+
+        self.updatePlayerPosition(app)
+
     
     def drawMap(self, app):
         drawImage(app.rockbackground, 0, 0, 
@@ -36,38 +54,32 @@ class Player3():
         drawImage(app.wall, app.width / 2 + 100, app.height / 2, 
                   width = 600, height = 20, align = 'center', rotateAngle = 90)
     
-    def startShow(self):
-        self.showIndex = 0
-        self.showTimer = 0
-
-    def updateReveal(self, time):       
-        self.revealTimer += time
-        if self.revealTimer >= 300:   
-            self.revealIndex += 1
-            self.revealTimer = 0
+    def startReveal(self):
+        self.revealing = True
+        self.currentGlowRow = 0
+        self.glowTimer = 0
+        self.glowOn = True
 
     def drawBridge(self, app):
-        gap = 20  
-        rowgap = 5  
+        gap = 20
+        row_gap = 5
         leftx = app.width / 2 - (self.cellwidth / 2 + gap / 2)
         rightx = app.width / 2 + (self.cellwidth / 2 + gap / 2)
-        starty = app.height - 125 
-
-        glowingrow = min(self.roundNumber * 2, len(self.bridge))
+        starty = app.height - 125
 
         for j in range(len(self.bridge)):        
-            for i in range(len(self.bridge[0])): 
+            for i in range(len(self.bridge[0])):
                 x = leftx if i == 0 else rightx
+                y = starty - j * (self.cellheight + row_gap)
 
-                y = starty - j * (self.cellheight + rowgap)
+                if self.bridge[j][i].visible:
+                    drawImage(app.bridge, x, y, width=self.cellwidth, height=self.cellheight, align='center')
 
-                drawImage(app.bridge, x, y,
-                        width=self.cellwidth, height=self.cellheight,
-                        align='center')
-                
-                if self.bridge[j][i].correct and j < self.revealIndex and j < glowingrow:
-                    drawRect(x, y, self.cellwidth, self.cellheight,
-                            fill='white', opacity=50, align='center')
+                if (self.glowOn and j == self.currentGlowRow and
+                    self.bridge[j][i].correct and self.bridge[j][i].visible):
+                    drawRect(x, y, self.cellwidth, self.cellheight, fill='white', opacity=50, align='center')
+
+
     
     def randomizeCorrect(self, app):
         for j in range(len(self.bridge)):
@@ -79,9 +91,107 @@ class Player3():
     def completeRound(self):
         if self.roundNumber < 5:      
             self.roundNumber += 1
-            self.startshow()       
+            self.startReveal()       
         else:
-            app.game3Over = True
+            app.game3success = True
+    
+    def updatePlayerPosition(self, app):
+        gap = 20
+        rowgap = 5
+        leftx = app.width / 2 - (self.cellwidth / 2 + gap / 2)
+        rightx = app.width / 2 + (self.cellwidth / 2 + gap / 2)
+        starty = app.height - 125
+
+        if self.currentRow == -1:
+            self.playerX = app.width / 2
+            self.playerY = app.height - 125 
+        else:
+            self.playerX = leftx if self.currentCol == 0 else rightx
+            self.playerY = starty - self.currentRow * (self.cellheight + rowgap)
+
+
+    def drawPlayer(self, app):
+        drawImage(app.game3character, self.playerX, self.playerY, width = self.playerWidth, height = self.playerHeight , align = 'center') 
+    
+    def checkMove(self, app, col):
+        if self.revealing or self.falling:
+            return
+
+        self.currentCol = col
+
+        if self.currentRow == -1:
+            self.currentRow = 0
+            self.updatePlayerPosition(app)
+            if not self.bridge[self.currentRow][self.currentCol].correct:
+                self.bridge[self.currentRow][self.currentCol].visible = False
+                self.falling = True
+            return
+
+        if self.currentRow >= self.roundNumber * 2 - 1:
+            self.roundNumber += 1
+            self.teleportDelay = 15
+            return
+
+        self.currentRow += 1
+        self.updatePlayerPosition(app)
+
+        if self.bridge[self.currentRow][self.currentCol].correct:
+            if self.currentRow >= len(self.bridge) - 1:
+                app.game3success = True
+                app.game3pass = True
+                return
+        else:
+            self.bridge[self.currentRow][self.currentCol].visible = False
+            self.falling = True
+
+
+
+    def updateGlow(self, app):
+
+        if not self.falling and not self.revealing and self.teleportDelay == 0:
+            if self.currentRow == self.roundNumber * 2 - 1:
+                self.roundNumber += 1
+                self.teleportDelay = 15
+                self.greenScreen = True
+
+        if self.falling:
+            self.playerWidth *= 0.9
+            self.playerHeight *= 0.9
+
+            if self.playerWidth < 15:
+                app.gameOver = True
+                self.falling = False
+                self.gameOver = True
+            return
+
+        if self.teleportDelay > 0:
+            self.teleportDelay -= 1
+            if self.teleportDelay == 0:
+                self.currentRow = -1
+                self.updatePlayerPosition(app)
+                self.startReveal()
+                self.greenScreen = False
+            return
+
+        if not self.revealing:
+            return
+
+        self.glowTimer += 1
+
+        if self.glowOn and self.glowTimer >= 15:
+            self.glowOn = False
+            self.glowTimer = 0
+
+        elif not self.glowOn and self.glowTimer >= 15:
+            self.currentGlowRow += 1
+            self.glowTimer = 0
+
+            if self.currentGlowRow >= min(self.roundNumber * 2, len(self.bridge)):
+                self.revealing = False
+            else:
+                self.glowOn = True
+        
+
 
 class MazeCell(): #Got this logic from ChatGPT
     def __init__(self):
@@ -311,6 +421,7 @@ def onAppStart(app):
     app.vignette = 'vignette.png'
     app.startingbackground = 'startingbackground.png'
     app.key = 'keyIcons.png'
+    app.crown = 'crown.png'
     app.opacity = 0
     app.rockbackground = 'rock_background.png'
 
@@ -360,7 +471,7 @@ def onAppStart(app):
     app.showWelcomeOverlay = False
 
     app.game1 = False
-    app.game1pass = True
+    app.game1pass = False
     app.player = Player1(app.width / 2, 540, app)
     app.game1On = False
     app.gameOver1 = False
@@ -371,7 +482,7 @@ def onAppStart(app):
     app.fadingOut1 = False
 
     app.game2 = False
-    app.game2pass = True
+    app.game2pass = False
     app.player2 = Player2(app)
     app.player2.generateMaze(0, 0)
     app.playerRow = 0
@@ -420,12 +531,12 @@ def onAppStart(app):
         'Press any key to begin your final quest.'
     ]
 
-
-    app.game4 = False
-    app.gameOver = False
-
-
-
+    app.ending = False
+    app.endingy = 0
+    app.fadingOut4 = False
+    app.fadeOpacity4 = 0
+    app.endingcount = 0
+    app.drawCrown = False
     app.waitingAfterGame1 = False
 
 def redrawAll(app):
@@ -451,6 +562,8 @@ def redrawAll(app):
                 drawRect(0, 0, app.width, app.height, fill='black', opacity=app.fadeOpacity1)
             if app.fadingOut2:
                 drawRect(0, 0, app.width, app.height, fill='black', opacity=app.fadeOpacity2)
+            if app.fadingOut3:
+                drawRect(0, 0, app.width, app.height, fill='black', opacity=app.fadeOpacity3)
 
 
     elif app.game1:
@@ -472,7 +585,26 @@ def redrawAll(app):
             drawRect(0, 0, app.width, app.height, fill = 'gold', opacity = 40)
             drawLabel('SUCCESS', app.width / 2, app.height / 2 - 300, size = 80, bold = True, fill = 'white', font = 'monospace')
             drawKey(app)
+    
+    elif app.game3:
+        drawgame3(app)
+        if app.player3.greenScreen:
+            drawRect(0, 0, app.width, app.height, fill = 'green', opacity = 40)
 
+        if app.player3.gameOver:
+            drawRect(0, 0, app.width, app.height, fill = 'red', opacity = 40)
+            drawLabel('[Press any KEY to go back to the mainpage]', app.width / 2, app.height / 2, size = 30, bold = True, fill = 'white', font = 'monospace')
+        if app.game3success:
+            drawRect(0, 0, app.width, app.height, fill = 'gold', opacity = 40)
+            drawLabel('SUCCESS', app.width / 2, app.height / 2 - 300, size = 80, bold = True, fill = 'white', font = 'monospace')
+            drawKey(app)
+
+    elif app.ending:
+        drawEnding(app)
+        if app.drawCrown:
+            drawImage(app.crown, app.width/2, app.height/2 - 70, width = 120, height = 120, align = 'center')
+            drawLabel('YOU WON!', app.width/2, app.height/2 + 100, size = 50, font = 'monospace', fill = 'white', bold = True)
+        
 
             
 
@@ -634,6 +766,22 @@ def restartGame2(app):
     app.game2speechDone = False
     app.game2speechcount = 0
 
+def restartGame3(app):
+    app.player3 = Player3(app) 
+    app.player3.randomizeCorrect(app)
+    
+    app.game3speechStart = True
+    app.game3speechDone = False
+    app.game3speechcount = 0
+    
+    app.game3On = False
+    app.game3success = False
+    app.player3.gameOver = False
+    
+    app.wizardWalkingIn = True
+    app.wizardy = -100
+
+
 
 def drawgame1(app):
     app.player.drawbackground(app)
@@ -692,6 +840,28 @@ def drawgame2(app):
         drawLabel('[click SPACE to continue]', app.width / 2, app.height / 2 - 150, font = 'monospace', size = 20, fill = 'white')
         drawImage('wizard1.png', app.width/2 , app.height/2 + 160,  width = 254, height = 304, align = 'center')
     
+def drawgame3(app):
+    app.player3.drawMap(app)
+    app.player3.drawBridge(app)
+    app.player3.drawPlayer(app)
+
+    if app.game3speechStart:
+        drawRect(0, 0, app.width, app.height, fill='black', opacity=50)
+        drawRect(app.width / 2 , app.height / 2 - 200, app.width, 200, fill = 'black', opacity = 50, align = 'center' )
+        drawLabel(app.game3speeches[app.game3speechcount], app.width / 2, app.height / 2 - 225, font = 'monospace', size = 18, fill = 'white', bold = True)
+        drawLabel('[click SPACE to continue]', app.width / 2, app.height / 2 - 150, font = 'monospace', size = 20, fill = 'white')
+        drawImage('wizard1.png', app.width/2 , app.height/2 + 160,  width = 254, height = 304, align = 'center')
+
+def drawEnding(app):
+    
+    color = rgb(68, 30, 10)
+    drawImage(app.startingbackground, 0, 0, width = app.width, height = app.height)
+    drawRect(0, 0, app.width, app.height, fill = color, opacity = 50)
+
+    drawOval(app.width / 2, app.height / 2, 600, 500, fill = 'red' , opacity = 10)
+    drawRect(0, 0, app.width, app.height, fill = 'black', opacity = 60)
+    drawImage(app.charactermovefront[app.endingcount % 2], app.width / 2 , app.endingy, width = 75, height = 125, align = 'center')
+    drawImage(app.vignette, app.width/2, app.height/2, width=app.width, height=app.height, align='center', opacity = 100)
 
 def onKeyPress(app, key):
     if app.starting and app.speechDone:
@@ -752,11 +922,38 @@ def onKeyPress(app, key):
         restartMain(app)
         restartGame2(app)
         app.mainpage = True
+    
+    if app.player3.gameOver:
+        app.player3.gameOver = False
+        app.game3 = False
+        restartMain(app)
+        restartGame3(app)
+        app.mainpage = True
 
     if app.playerRow == app.player2.rows - 1 and app.playerCol == app.player2.cols - 1:
         app.game2success = True
         app.game2pass = True
         return
+    
+   
+    if app.game3:
+        if app.game3speechStart:
+            if key == 'space':
+                app.game3speechcount += 1
+                if app.game3speechcount >= len(app.game3speeches):
+                    app.game3speechStart = False
+                    app.game3speechDone = True
+        elif app.game3speechDone and not app.game3On:
+            app.game3On = True
+            app.player3.randomizeCorrect(app)
+            app.player3.startReveal()
+        elif app.game3On and not app.game3success:
+            if key in ['a', 'left']:
+                app.player3.currentCol = 0
+                app.player3.checkMove(app, 0)
+            elif key in ['d', 'right']:
+                app.player3.currentCol = 1
+                app.player3.checkMove(app, 1)
 
 
     if app.player.gameOver1:
@@ -801,11 +998,19 @@ def onKeyHold(app, keys):
             if not((app.backgroundx < 300 or app.backgroundx > 500) and app.backgroundy < 315):
                 app.backgroundmovingdown = True
                 app.characterdirection = app.charactermovefront
-        
+
+            if app.backgroundy <= 125 and not app.fadingOut4:
+                app.fadingOut4 = True
+                app.fadeOpacity4 = 0 
+
         elif ('w' in keys or 'up' in keys) and app.backgroundy < (bgHeight + (app.height - bgHeight)):
             if not((app.backgroundx < 300 or app.backgroundx > 500) and app.backgroundy > 460):
                 app.backgroundmovingup = True
                 app.characterdirection = app.charactermoveback
+            
+            if app.backgroundy >= 600 and not app.fadingOut3 and app.game2pass:
+                app.fadingOut3 = True
+                app.fadeOpacity3 = 0 
 
 def onKeyRelease(app, key):
     if not app.starting and app.mainpage:
@@ -872,6 +1077,19 @@ def onStep(app):
             app.mainpage = True
             app.game2success = False
             app.keycounter = 0
+
+    if app.game3success:
+        app.keycounter += 1
+        app.waitingAfterGame3 = True
+        if app.keycounter >= 160:
+            app.waitingAfterGame3 = False
+            app.game3 = False
+            app.game3On = False
+            restartMain(app)
+            restartGame3(app)
+            app.mainpage = True
+            app.game3success = False
+            app.keycounter = 0
    
 
     if app.fadingOut1:
@@ -889,6 +1107,22 @@ def onStep(app):
             app.fadingOut2 = False
             app.mainpage = False
             app.game2 = True
+    
+    if app.fadingOut3:
+        app.fadeOpacity3 += 20  
+        if app.fadeOpacity3 >= 100:
+            app.fadeOpacity3 = 100
+            app.fadingOut3 = False
+            app.mainpage = False
+            app.game3 = True
+
+    if app.fadingOut4:
+        app.fadeOpacity4 += 20  
+        if app.fadeOpacity4 >= 100:
+            app.fadeOpacity4 = 100
+            app.fadingOut4 = False
+            app.mainpage = False
+            app.ending = True
 
     if app.starting and app.wizardWalkingIn:
         app.wizardy += app.wizardSpeed
@@ -900,6 +1134,19 @@ def onStep(app):
     if app.starting:
         if app.count % 10 == 0:
             app.wizardcount += 1
+
+    if app.ending:
+        if app.count % 10 == 0:
+            app.endingcount += 1
+        app.endingy += 4
+        if app.endingy >= app.height/2:
+            app.endingy = app.height/2
+            app.drawCrown = True
+            
+
+    if app.game3On: 
+        app.player3.updateGlow(app)
+
     
 def main():
     runApp()
