@@ -999,7 +999,7 @@ def onKeyHold(app, keys):
                 app.backgroundmovingdown = True
                 app.characterdirection = app.charactermovefront
 
-            if app.backgroundy <= 125 and not app.fadingOut4:
+            if app.backgroundy <= 125 and not app.fadingOut4 and app.game3pass:
                 app.fadingOut4 = True
                 app.fadeOpacity4 = 0 
 
