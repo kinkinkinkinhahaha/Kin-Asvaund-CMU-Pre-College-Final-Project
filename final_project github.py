@@ -206,7 +206,7 @@ class Player2():
         self.cellSize = 40
         self.rows = 20
         self.cols = 20
-        self.maze = [[MazeCell() for i in range(self.cols)] for j in range(self.rows)] 
+        self.maze = [[MazeCell() for i in range(self.cols)] for j in range(self.rows)] #Like the logic in Player 3, this logic is from ChatGPT
         self.gameOver2 = False
 
 
@@ -228,8 +228,8 @@ class Player2():
 
 
     
-    def generateMaze(self, row, col):
-        cell = self.maze[row][col]
+    def generateMaze(self, row, col): #Got the logic of carving out walls to make a maze from this youtube video:
+        cell = self.maze[row][col] #Video link: https://www.youtube.com/watch?v=uctN47p_KVk 
         cell.visited = True
 
         directions = ['top', 'right', 'bottom', 'left']
@@ -366,7 +366,7 @@ class Player1():
             playerLeft = self.x - 37
             playerRight = self.x + 37
 
-            if (self.vy >= 0 and
+            if (self.vy >= 0 and 
                 playerBottom >= platformTop and 
                 playerBottom <= platformTop + abs(self.vy) + 1 and
                 playerRight > platformLeft and playerLeft < platformRight):
