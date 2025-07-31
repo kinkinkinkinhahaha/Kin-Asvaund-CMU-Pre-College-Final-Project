@@ -10,10 +10,10 @@ class Player3():
     def __init__(self, app):
         self.x = app.width / 2
         self.y = app.height - 50
-        self.bridge = [[BridgeCell() for i in range(2)] for j in range(10)]
+        self.bridge = [[BridgeCell() for i in range(2)] for j in range(10)] # I got this logic from ChatGPT (I asked how to create classes for every cell in a grid)
         self.cellwidth = 80
         self.cellheight = 55
-        self.showIndex = 0          
+        self.showIndex = 0 
         self.showTimer = 0  
         self.roundNumber = 1
 
@@ -21,7 +21,7 @@ class Player3():
         self.currentCol = 0   
         self.playerX = app.width / 2  
         self.playerY = app.height - 120  
-        self.showIndex = 0        
+        self.showIndex = 0
         self.showTimer = 0        
         self.showDelay = 30   
         self.revealing = False
